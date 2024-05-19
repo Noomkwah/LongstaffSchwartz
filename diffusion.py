@@ -393,6 +393,98 @@ class BlackScholesModel(Diffusion):
     #########################################################################
 
 
+class LocalVolatilityModel(Diffusion):
+    """
+    Local Volatility model. Diffuses dX_t = X_t * r dt + X_t * sigma(t, X_t) dW_t
+    """
+    
+    ############################### INIT ####################################
+    def __init__(self, r: float = None, sigma: float = None, verbose: bool = False):
+        """
+        Initialize the Local Volatility model parameters.
+
+        ---------------
+        Arguments:
+            r: float, optional (default = None), risk-free interest rate
+            sigma: float, optional (default = None), volatility of the asset process
+            verbose: bool, optional (default = False), controls the logs displayed during Monte Carlo simulation
+        ---------------
+        Returns:
+            None
+        """
+        super(LocalVolatilityModel, self).__init__()
+        
+        self.r = r
+        self.sigma = sigma
+        self.verbose = verbose
+
+        
+    def __str__(self) -> str:
+        return f"LocalVolatilityModel(r = {self.r}, sigma = {self.sigma})"
+    #########################################################################
+    
+    ######################## MONTE CARLO SIMULATION #########################
+    def forward(self, t0: float, t1: float, N: int, x0: Union[np.ndarray, float]) -> np.ndarray:
+        """
+        Simulate the asset price forward in time using the Local Volatility model.
+
+        ---------------
+        Arguments:
+            t0: float, initial time
+            t1: float, final time
+            N: int, number of samples
+            x0: np.ndarray or float, initial asset price(s)
+
+        ---------------
+        Returns:
+            x1: np.ndarray, Simulated asset prices
+        """
+        
+        if not hasattr(x0, 'size'):
+            x0 = np.array([x0] * N)
+        
+        # Randomness
+        Delta_W = BrownianIncrements()(t0, t1, 1, N)
+        Delta_t = t1 - t0
+        
+        # Compute x1 from x0
+        x1 = x0 + self.r * x0 * Delta_t + self.sigma(t0, x0) * x0 * Delta_W
+        
+        return x1
+    
+    
+    def diffuse(self, T: float, x0: float, N_samples: int = 1000000, pi: np.ndarray = None, N_steps: int = 100) -> MonteCarloPaths:
+        """
+        Simulate asset price paths using the Local Volatility model.
+
+        ---------------
+        Arguments:
+            T: float, maturity time
+            x0: float, initial asset price
+            N_samples: int, optional (default = 1,000,000), number of samples
+            pi: np.ndarray, optional (default = None), array of intermediate times
+            N_steps: int, optional (default = 100), number of intermediate steps
+
+        ---------------
+        Returns:
+            X: MonteCarloPaths, simulated asset prices paths
+        """
+        X = np.zeros((N_steps, N_samples))
+        if pi is None:
+            pi = np.linspace(0, T, N_steps)
+        N_steps = len(pi)
+        
+        X[0] = x0
+        for k in range(N_steps-1):
+            X[k+1] = self.forward(t0=pi[k], t1=pi[k+1], N=N_samples, x0=X[k])
+            
+            if self.verbose:
+                print(k, end = ' ' if k < N_steps-2 else '\n')
+        
+        return MonteCarloPaths(X, pi)
+    #########################################################################
+
+    
 class HestonModel(Diffusion): 
     """
     Heston Stochastic Volatility model.
