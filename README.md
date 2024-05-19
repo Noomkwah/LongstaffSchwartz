@@ -9,3 +9,9 @@ For the next version, I plan to enrich the `LocalVolatilityModel` by adding the 
 It would be great to also add the calibration possibily into `BlackScholesModel` and `HestonModel`.
 
 Another 'simple' improvement would be to allow deterministic but non-constant interest rate $r(t)$.
+
+
+## Previous versions
+
+**v0**: Only non-path dependent markovian options over 1D underlying following a Black Scholes diffusion (i.e $\mathrm{d}X_t = rX_t\mathrm{d}t + \sigma X_t\mathrm{d}W_t$) could be priced (for instance the American Put).
+**v1**: Current version. See Advancement section above.
